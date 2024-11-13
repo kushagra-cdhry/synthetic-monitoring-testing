@@ -1,25 +1,31 @@
-name: Check Changed Files
+name: Check Last Two Commit Changes
 
 on:
   push:
     branches:
-      - main
+      - main  # Change to your default branch if needed
+  pull_request:
+    branches:
+      - main  # Change to your default branch if needed
 
 jobs:
   check-changes:
     runs-on: ubuntu-latest
-
+    
     steps:
+      # Checkout the repository code and fetch the full commit history
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-
-      - name: Get changed files
+          fetch-depth: 0  # This fetches the full commit history
+      
+      # List the files changed in the last two commits and save to a file
+      - name: List changed files in the last two commits
         run: |
-          # Get the list of changed files between the last commit and the current commit
           git diff --name-only HEAD~2 HEAD > changed_files.txt
-
-      - name: Show changed files
-        run: |
           cat changed_files.txt
+      
+      # Extract and print folder names using awk
+      - name: Extract folder names using awk
+        run: |
+          awk -F'/' '{print $1}' changed_files.txt | sort -u
