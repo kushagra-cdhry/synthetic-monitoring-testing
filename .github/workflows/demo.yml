@@ -1,0 +1,17 @@
+name: Troubleshooting the warnings
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  aAWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  job1:
+    name: Toubleshooting
+    runs-on: ubuntu-latest
+
+  steps:
+    - name:
