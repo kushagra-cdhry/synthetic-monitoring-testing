@@ -25,7 +25,8 @@ jobs:
       # Extract and print folder names using awk
       - name: Extract folder names using awk
         run: |
-          awk -F'/' '{print $1}' changed_files.txt | sort -u > folders.txt
+          awk -F'/' 'NR > 1 {print $1}' changed_files.txt | sort -u > folders.txt
+          cat folders.txt
 
       # Set up AWS CLI
       - name: Set up AWS CLI
@@ -39,8 +40,7 @@ jobs:
       - name: Build, push Docker images, and update Lambda functions
         run: |
           while read folder; do
-            if [ "$folder" != ".github" ]; then
-              echo "Building and pushing Docker image for folder: $folder"
+          echo "Building and pushing Docker image for folder: $folder"
               cd $folder
 
               # Fetch the list of existing tags from ECR
@@ -80,5 +80,4 @@ jobs:
                 --region ${{ secrets.AWS_REGION }}
 
               cd ..
-            fi
           done < folders.txt
