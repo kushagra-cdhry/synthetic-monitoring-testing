@@ -3,17 +3,21 @@ name: Check Last Two Commit Changes
 on:
   push:
     branches:
-      - main  # Change to your default branch if needed
+      - main
+  pull_request:
+    branches:
+      - main
+
 jobs:
   check-changes:
     runs-on: ubuntu-latest
-    
+
     steps:
       # Checkout the repository code and fetch the full commit history
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # This fetches the full commit history
+          fetch-depth: 0
 
       # List the files changed in the last two commits and save to a file
       - name: List changed files in the last two commits
@@ -21,34 +25,37 @@ jobs:
           git diff --name-only HEAD~2 HEAD > changed_files.txt
           cat changed_files.txt
 
-      # Extract folder names using awk
+      # Extract and print folder names using awk
       - name: Extract folder names using awk
         run: |
           awk -F'/' '{print $1}' changed_files.txt | sort -u > folders.txt
 
-      # Build and push images to ECR for each folder
-      - name: Build and push Docker images to ECR
-        run: |
-          # Set up AWS CLI
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set default.region ${{ secrets.AWS_REGION }}
-          
-          ECR_REPO_NAME=${{ secrets.ECR_REPO_NAME }}
-          ECR_REGION=${{ secrets.AWS_REGION }} # Region where ECR is located
+      # Set up AWS CLI
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-          # Loop through each folder and build & push the image to ECR
+      # Build and push Docker images for each folder
+      - name: Build and push Docker images
+        run: |
           while read folder; do
-            if [ "$folder" != ".github" ]; then
-              echo "Building and pushing Docker image for folder: $folder"
-              
-              # Build the Docker image
-              docker build -t $ECR_REPO_NAME:$folder $folder
-              
-              # Tag the image with the folder name
-              docker tag $ECR_REPO_NAME:$folder $ECR_REGION.amazonaws.com/$ECR_REPO_NAME:$folder
-              
-              # Push the image to ECR
-              docker push $ECR_REGION.amazonaws.com/$ECR_REPO_NAME:$folder
-            fi
+            echo "Building and pushing Docker image for folder: $folder"
+            cd $folder
+
+            # Build Docker image
+            docker build -t $folder .
+
+            # Tag the image with ECR repository URL
+            docker tag $folder:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/my-repo:$folder
+
+            # Log in to ECR
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+            # Push the Docker image to ECR
+            docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/my-repo:$folder
+
+            cd ..
           done < folders.txt
