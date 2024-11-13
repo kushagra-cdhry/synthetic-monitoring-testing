@@ -22,7 +22,7 @@ jobs:
       # List the files changed in the last two commits and save to a file
       - name: List changed files in the last two commits
         run: |
-          git diff --name-only HEAD~1 HEAD > changed_files.txt
+          git diff --name-only HEAD~2 HEAD > changed_files.txt
           cat changed_files.txt
       
       # Extract and print folder names using awk
