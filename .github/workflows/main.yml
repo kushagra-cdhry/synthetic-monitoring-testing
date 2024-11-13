@@ -39,22 +39,39 @@ jobs:
       - name: Build and push Docker images
         run: |
           while read folder; do
-           if [ "$folder" != ".github" ]; then
-            echo "Building and pushing Docker image for folder: $folder"
-            cd $folder
+            if [ "$folder" != ".github" ]; then
+              echo "Building and pushing Docker image for folder: $folder"
+              cd $folder
 
-            # Build Docker image
-            docker build -t $folder .
+              # Fetch the list of existing tags from ECR
+              existing_tags=$(aws ecr describe-images --repository-name ${{ secrets.ECR_REPO_NAME }} --region ${{ secrets.AWS_REGION }} --output json | jq -r '.imageDetails[].imageTags[]' | grep "^v[0-9]\+\.[0-9]\+\.[0-9]\+-${folder}$" | sort -V | tail -n 1)
 
-            # Tag the image with ECR repository URL
-            docker tag $folder:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:$folder
+              # Determine the next version
+              if [ -z "$existing_tags" ]; then
+                new_version="v1.0.0-${folder}"
+              else
+                # Extract the version number and increment it
+                major=$(echo $existing_tags | cut -d '.' -f1 | cut -c2-)
+                minor=$(echo $existing_tags | cut -d '.' -f2)
+                patch=$(echo $existing_tags | cut -d '.' -f3 | cut -d '-' -f1)
+                new_patch=$((patch + 1))
+                new_version="v${major}.${minor}.${new_patch}-${folder}"
+              fi
 
-            # Log in to ECR
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+              echo "New version tag: $new_version"
 
-            # Push the Docker image to ECR
-            docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:$folder
+              # Build Docker image
+              docker build -t $folder .
 
-            cd ..
-          fi
+              # Tag the image with ECR repository URL
+              docker tag $folder:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:$new_version
+
+              # Log in to ECR
+              aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+              # Push the Docker image to ECR
+              docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:$new_version
+
+              cd ..
+            fi
           done < folders.txt
