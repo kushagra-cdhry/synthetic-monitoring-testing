@@ -15,10 +15,8 @@ jobs:
 
       - name: Get changed files
         run: |
-          # Fetch all commits from the remote
-          git fetch --prune --unshallow
           # Get the list of changed files between the last commit and the current commit
-          git diff --name-only HEAD^ HEAD > changed_files.txt
+          git diff --name-only HEAD~2 HEAD > changed_files.txt
 
       - name: Show changed files
         run: |
