@@ -1,3 +1,3 @@
 def lambda_handler(event, context):
-    print("Hello from Lambda 4 latestt") 
+    print("Hello from Lambda 4 latesttt") 
     return {"statusCode": 200, "body": "Hello from Lambda 4"} 
