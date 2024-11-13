@@ -35,8 +35,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # Build and push Docker images for each folder
-      - name: Build and push Docker images
+      # Build, push Docker images and update Lambda functions
+      - name: Build, push Docker images, and update Lambda functions
         run: |
           while read folder; do
             if [ "$folder" != ".github" ]; then
@@ -71,6 +71,13 @@ jobs:
 
               # Push the Docker image to ECR
               docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:$new_version
+
+              # Update the corresponding Lambda function
+              echo "Updating Lambda function: $folder"
+              aws lambda update-function-code \
+                --function-name $folder \
+                --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:$new_version \
+                --region ${{ secrets.AWS_REGION }}
 
               cd ..
             fi
