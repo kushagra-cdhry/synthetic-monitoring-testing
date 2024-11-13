@@ -42,6 +42,7 @@ jobs:
       - name: Build and push Docker images
         run: |
           while read folder; do
+           if [ "$folder" != ".github" ]; then
             echo "Building and pushing Docker image for folder: $folder"
             cd $folder
 
@@ -58,4 +59,5 @@ jobs:
             docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/my-repo:$folder
 
             cd ..
+          fi
           done < folders.txt
